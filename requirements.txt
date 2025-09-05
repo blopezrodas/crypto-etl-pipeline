@@ -1,0 +1,20 @@
+# Data manipulation
+pandas
+numpy
+
+# API calls
+requests
+
+# Database integration (PostgreSQL / Redshift)
+sqlalchemy
+psycopg2-binary
+
+# AWS integration
+boto3
+
+# Jupyter notebooks
+jupyter
+
+# Dashboard / visualization
+plotly
+dash
