@@ -1,11 +1,10 @@
 # Think of docker-compose.yml as a manager for multiple containers.
 # It allows you to:
-# - Run multiple services together (e.g., ETL container + PostgreSQL + Airflow)
+# - Run multiple services together (e.g., ETL container + Airflow)
 # - Map local folders to container folders (volumes) so changes on your computer reflect inside the container
-# - Map ports so you can access services in a browser or via Python (8888 for Jupyter, 5432 for PostgreSQL)
+# - Map ports so you can access services in a browser or via Python (8888 for Jupyter)
 # - Set environment variables (like DB credentials)
 # - Easily start, stop, or rebuild multiple containers with one command: docker-compose up
-
 
 version: '3.8'
 
@@ -19,17 +18,5 @@ services:
     volumes:
       - ./src:/app/src
       - ./notebooks:/app/notebooks
-
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: crypto_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
+      - ./dbt:/app/dbt
+      - ./dags:/app/dags
