@@ -5,12 +5,20 @@ numpy
 # API calls
 requests
 
-# Database integration (PostgreSQL / Redshift)
-sqlalchemy
-psycopg2-binary
+# # Database integration (PostgreSQL / Redshift)
+# # (no longger needed since using snowflake)
+# sqlalchemy
+# psycopg2-binary
 
-# AWS integration
+# Cloud storage / AWS integration
 boto3
+
+# Data warehouse
+snowflake-connector-python
+dbt-snowflake
+
+# Orchestration
+apache-airflow  # or prefect
 
 # Jupyter notebooks
 jupyter
