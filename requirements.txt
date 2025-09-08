@@ -1,28 +1,23 @@
 # Data manipulation
-pandas
-numpy
+pandas==2.1.0
+numpy==1.25.0
 
 # API calls
-requests
-
-# # Database integration (PostgreSQL / Redshift)
-# # (no longger needed since using snowflake)
-# sqlalchemy
-# psycopg2-binary
+requests==2.31.0
 
 # Cloud storage / AWS integration
-boto3
+boto3==1.28.0
 
 # Data warehouse
-snowflake-connector-python
-dbt-snowflake
+snowflake-connector-python==3.17.3
+dbt-snowflake==1.6.0
 
 # Orchestration
-apache-airflow  # or prefect
+apache-airflow==2.7.1
 
 # Jupyter notebooks
-jupyter
+jupyter==1.0.0
 
 # Dashboard / visualization
-plotly
-dash
+plotly==5.16.0
+dash==2.14.1
