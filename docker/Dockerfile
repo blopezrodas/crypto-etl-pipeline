@@ -8,8 +8,14 @@ WORKDIR /app
 # build context is the repo root (set in docker-compose.yml)
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip and build tools first (important for Airflow/dbt)
+RUN pip install --upgrade pip setuptools wheel
+
+# # Install Python dependencies
+# RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with Airflow constraints
+RUN pip install --no-cache-dir -r requirements.txt \
+    -c https://raw.githubusercontent.com/apache/airflow/constraints-2.7.1/constraints-3.11.txt
 
 # Expose Jupyter Notebook port
 EXPOSE 8888
