@@ -213,3 +213,7 @@ __marimo__/
 # AWS credentials (if you use local credentials)
 .aws/
 
+# Data folders
+data/raw/
+data/processed/
+
