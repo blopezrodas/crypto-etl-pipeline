@@ -1,26 +1,22 @@
 # Data manipulation
 pandas==2.1.0
-# numpy==1.25.0 # let Airflow constraints handle this
+numpy==1.25.0
 
 # API calls
 requests==2.31.0
 
 # Cloud storage / AWS integration
-# boto3==1.28.0 # let Airflow constraints handle this
+boto3==1.28.0
 
 # Data warehouse
-# snowflake-connector-python==3.17.3 # let Airflow constraints handle this
-dbt-core==1.6.6
+snowflake-connector-python==3.17.3
 dbt-snowflake==1.6.0
 
 # Orchestration
 apache-airflow==2.7.1
 
 # Jupyter notebooks
-# jupyter==1.0.0
-# Don’t need classic Jupyter Notebook or JupyterLab inside container
-# Install only kernel + minimal notebook server so VS Code can talk to it.
-notebook==7.0.5
+jupyter==1.0.0
 
 # Dashboard / visualization
 plotly==5.16.0

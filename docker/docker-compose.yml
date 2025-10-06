@@ -16,7 +16,7 @@ services:
     ports:
       - "8888:8888"
     volumes:
-      - ./src:/app/src
-      - ./notebooks:/app/notebooks
-      - ./dbt:/app/dbt
-      - ./dags:/app/dags
+      - ../src:/app/src
+      - ../notebooks:/app/notebooks
+      - ../dbt:/app/dbt
+      - ../dags:/app/dags
