@@ -10,7 +10,7 @@ Parameters:
   days (int): Number of days to fetch data for
   interval (str): 'daily' or 'hourly'
 Returns:
-  pd.DataFrame: Timestamp (ms), price (usd)
+  pd.DataFrame: Timestamp (ms), price, coin, currency, extracted_at
 '''
 def fetch_data(coin = 'bitcoin', vs_currency = 'usd', days = 30, interval = 'daily'):
   # API endpoint URL
@@ -24,6 +24,10 @@ def fetch_data(coin = 'bitcoin', vs_currency = 'usd', days = 30, interval = 'dai
   # convert to dataframe
   # data['prices'] = [timestamp in ms, price]
   df = pd.DataFrame(data['prices'], columns = ['timestamp', 'price'])
+  # Add metadata
+  df['coin'] = coin
+  df['currency'] = vs_currency
+  df['extracted_at'] = pd.Timestamp.utcnow()
   return df
 
 '''
@@ -38,23 +42,19 @@ Returns:
   pd.DataFrame: Timestamp (ms), price (usd), coin
 '''
 def fetch_multicoin_data(coins, vs_currency = 'usd', days = 30, interval = 'daily'):
-  data = []
-  for coin in coins:
-    df = fetch_data(coin, vs_currency, days, interval)
-    df['coin'] = coin
-    data.append(df)
-
+  data = [fetch_data(coin, vs_currency, days, interval) for coin in coins]
   return pd.concat(data, ignore_index = True)
 
 '''
-Save DataFrame to CSV (create directories if needed)
+Save DataFrame to CSV (path + filename decided by Airflow)
 '''
-def save_data(df, filename = 'raw_crypto_data.csv', path = 'data/raw'):
-  # Check if folder exists
+def save_data(df, filename, path):
+  # cross-platform compatibility
   import os
+  # Check if folder exists
   os.makedirs(os.path.dirname(path), exist_ok=True)
   # Save raw data
-  df.to_csv(path + '/' + filename, index = False)
+  df.to_csv(os.path.join(path, filename), index = False)
 
 '''
 Main
@@ -62,4 +62,4 @@ Main
 if __name__ == '__main__':
   coins = ['bitcoin', 'ethereum', 'cardano']
   df = fetch_multicoin_data(coins)
-  save_data(df)
+  save_data(df, 'crypto_prices.csv', 'data/raw')
