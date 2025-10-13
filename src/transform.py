@@ -50,18 +50,17 @@ def transform_data(df):
 '''
 Save DataFrame to CSV (create directories if needed)
 '''
-def save_data(df, filename = 'processed_crypto_data.csv', path = 'data/processed'):
+def save_data(df, filename, path):
   # Check if folder exists
   import os
   os.makedirs(os.path.dirname(path), exist_ok=True)
   # Save processed data
-  df.to_csv(path + '/' + filename, index = False)
+  df.to_csv(os.path.join(path, filename), index = False)
 
-'''
-Main
-'''
+
+# Main: Standalone testing/demo only
 if __name__ == '__main__':
-  raw_path = 'data/raw/raw_crypto_data.csv'
+  raw_path = 'data/raw/crypto_prices.csv'
   df_raw = pd.read_csv(raw_path)
   df_transformed = transform_data(df_raw)
-  save_data(df_transformed)
+  save_data(df_transformed, 'crypto_prices.csv', 'data/processed')
