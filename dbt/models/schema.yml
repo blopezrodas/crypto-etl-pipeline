@@ -1,0 +1,9 @@
+# This schema.yml defines sources for dbt.
+# The 'crypto_prices_staging' table is the staging table loaded from S3 via load_snowflake.py.
+
+version: 2
+
+sources:
+  - name: crypto
+    tables:
+      - name: crypto_prices_staging
