@@ -28,6 +28,9 @@ def fetch_data(coin = 'bitcoin', vs_currency = 'usd', days = 30, interval = 'dai
   df['coin'] = coin
   df['currency'] = vs_currency
   df['extracted_at'] = pd.Timestamp.utcnow()
+  # Reorder and rename columns to match Snowflake staging table
+  df = df[['coin', 'timestamp', 'price', 'currency', 'extracted_at']]
+  df.rename(columns={'coin': 'coin_id', 'timestamp': 'timestamp_ms'}, inplace=True)
   return df
 
 '''
