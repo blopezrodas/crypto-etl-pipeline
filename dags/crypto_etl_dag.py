@@ -3,13 +3,14 @@ Crypto ETL Pipeline with Airflow
 -------------------------------- 
 
 Purpose:
-    Reproducible ETL pipeline that fetches last 30 days of crypto data daily.
+    Reproducible ELT pipeline that fetches last 30 days of crypto data daily.
     Demonstrates modular Python tasks, XCom communication, and Airflow macros.
 
 Workflow:
-    - Extract: fetch raw crypto data and save as CSV
-    - Transform: clean and format the data
-    - Load: insert processed data into Snowflake
+    - Extract: fetch raw crypto data and upload directly to S3
+    - Load: load data into Snowflake staging table
+    - Transform: run dbt models (staging + marts)
+    - Test: run dbt tests
     - Communication: tasks share file paths via XComs
     - Reproducibility: filenames use Airflow macros (ds) for backfill safety
 
@@ -21,18 +22,25 @@ Airflow notes:
         - task instance (ti)
         - DAG run ID
         - logical run time
+dbt notes:
+    - cd {DBT_PROJECT_DIR}: point this to wherever dbt project lives inside the Airflow container or environment.
+    - DBT_PROJECT_DIR can be overridden via environment variable
+    - --profiles-dir .: makes sure dbt picks up profiles.yml config.
 """
 
-import pandas as pd
+import os
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
 # DAG start_date expects a datetime object
-# 
 from datetime import datetime, timedelta
 # pipeline functions
-from src.extract import fetch_multicoin_data, save_data as save_raw_data
-from src.transform import transform_data, save_data as save_processed_data
+from src.extract import fetch_multicoin_data
+from src.load_s3 import upload_df_to_s3
 from src.load_snowflake import get_connection, create_table, load_data
+
+# dbt config
+DBT_PROJECT_DIR = os.getenv("DBT_PROJECT_DIR", "/opt/airflow/dbt")
 
 # -------------------------------------------------------------------- 
 # Airflow task functions
@@ -40,62 +48,40 @@ from src.load_snowflake import get_connection, create_table, load_data
 
 def extract_task(ds, **context):
     """
-    Extracts crypto data from CoinGecko API and save raw CSV.
+    Extracts crypto data from CoinGecko API and upload to S3.
     
     Parameters:
         ds (str): Airflow execution date in YYYY-MM-DD format (provided by Airflow)
         **context (dict): Airflow runtime context metadata.
     Returns:
-        str: Filepath of the saved raw data CSV (pushed to XCom for downstream tasks).
+        str: S3 key (pushed to XCom for downstream tasks).
     """
     coins = ['bitcoin', 'ethereum', 'cardano']
     df = fetch_multicoin_data(coins, days=30, interval='daily')
-    # make the DAG backfill-safe with Airflow's ds macro
-    filename = f"crypto_raw_{ds}.csv"
-    save_raw_data(df, filename=filename, path='data/raw')
+    s3_prefix = "raw/crypto"
+    filename = f"crypto_prices_{ds}.csv"    # make the DAG backfill-safe with Airflow's ds macro
+    s3_key = os.path.join(s3_prefix, filename)
+    upload_df_to_s3(df, os.getenv("AWS_BUCKET_NAME"), s3_key)
     # Push path to XCom for downstream tasks
-    context['ti'].xcom_push(key='path_raw', value=f'data/raw/{filename}')
+    context['ti'].xcom_push(key='s3_key', value=s3_key)
     # Return path (useful for testing outside Airflow)
-    return f'data/raw/{filename}'
+    return s3_key
 
 
-def transform_task(ds, **context):
+def load_snowflake_task(**context):
     """
-    Transform raw crypto data and save processed CSV.
-
-    Parameters:
-        ds (str): Airflow execution date in YYYY-MM-DD format
-        **context (dict): Airflow runtime context metadata.
-    Returns:
-        str: Filepath of the saved processed data CSV (pushed to XCom for downstream tasks).
-    """
-    # Get path from extract (avoids hardcoding)
-    # xcom_pull() = "pull something that another task pushed"
-    # task_ids='extract' = “give me whatever value the extract task returned”
-    path = context['ti'].xcom_pull(task_ids='extract', key='path_raw')
-    df = pd.read_csv(path)
-    df_processed = transform_data(df)
-    # make the DAG backfill-safe with Airflow's ds macro
-    filename = f"crypto_processed_{ds}.csv"
-    save_processed_data(df_processed, filename=filename, path='data/processed')
-    context['ti'].xcom_push(key='path_processed', value=f'data/processed/{filename}')
-    # Return path (useful for testing outside Airflow)
-    return f'data/processed/{filename}'
-
-def load_task(**context):
-    """
-    Load processed crypto data into Snowflake.
+    Load crypto data from S3 into Snowflake.
 
     Parameters:
         **context (dict): Airflow runtime context metadata.
     Returns:
         None
     """
-    path = context['ti'].xcom_pull(task_ids='transform', key='path_processed')
-    df = pd.read_csv(path, parse_dates=['timestamp_utc'])
+    s3_key = context['ti'].xcom_pull(task_ids='extract', key='s3_key')
     conn = get_connection()
-    create_table(conn)
-    load_data(df, conn)
+    table_name = "crypto_prices_staging"
+    create_table(conn, table_name)
+    load_data(conn, s3_key, table_name)
     conn.close()
 
 # --------------------------------------------------------------------
@@ -110,27 +96,40 @@ default_args = {
 }
 
 with DAG(
-    dag_id = 'crypto_etl_pipeline',
+    dag_id = 'crypto_elt_pipeline',
     default_args = default_args,
+    description = "End-to-end crypto ELT pipeline (CoinGecko → S3 → Snowflake → dbt)",
     start_date = datetime(2025, 1, 1),
     schedule_interval = '@daily',
     catchup = False
 ) as dag:
     
+    # Step 1: Extract and upload directly to S3
     extract = PythonOperator(
         task_id = 'extract',
         python_callable = extract_task
     )
 
-    transform = PythonOperator(
-        task_id = 'transform',
-        python_callable = transform_task
+    # Step 2: Load from S3 → Snowflake
+    load_snowflake = PythonOperator(
+        task_id = 'load',
+        python_callable = load_snowflake_task
     )
 
-    load = PythonOperator(
-        task_id = 'load',
-        python_callable = load_task
+    # Step 3: Run dbt models
+    dbt_run = BashOperator(
+        task_id = 'dbt_run',
+        bash_command = f"cd {DBT_PROJECT_DIR} && dbt run --profiles-dir .",
+        # dbt can fail if Snowflake is busy
+        retries = 2,
+        retry_delay = timedelta(minutes=3)
+    )
+
+    # Step 4: Run dbt tests
+    dbt_test = BashOperator(
+        task_id = 'dbt_test',
+        bash_command = f"cd {DBT_PROJECT_DIR} && dbt test --profiles-dir ."
     )
 
     # Task dependencies
-    extract >> transform >> load
+    extract >> load_snowflake >> dbt_run >> dbt_test
