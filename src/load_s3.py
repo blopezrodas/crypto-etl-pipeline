@@ -5,17 +5,18 @@ from io import StringIO         # in-memory buffer to hold CSV data
 from botocore.exceptions import NoCredentialsError  # Handle missing AWS credentials
 import pandas as pd
 
-# -----------------------
-# S3 path explanation:
-#   s3_prefix  -> folder or "directory" path inside the bucket (e.g., "raw/crypto")
-#   s3_key     -> full object path including filename inside the bucket
-#                equivalent to: s3://{AWS_BUCKET_NAME}/{s3_key}
+# ---------- S3 Notes ----------
+# S3 path: s3://<bucket-name>/<key> equivalent to s3://{AWS_BUCKET_NAME}/{s3_key}
+#   s3://           -> Prefix indicates that the path refers to an Amazon S3 resource.
+#   <bucket-name>   -> S3 bucket name (must be globally unique across all of Amazon S3)
+#   <key>           -> Full object path inside bucket (prefixes + filename)
+#   prefix          -> folder or "directory" path inside bucket
 # Example:
-#   s3_prefix = "raw/crypto"
-#   filename   = "crypto_prices.csv"
-#   s3_key     = os.path.join(s3_prefix, filename)
+#   s3_prefix   = "raw/crypto"
+#   filename    = "crypto_prices.csv"
+#   s3_key      = os.path.join(s3_prefix, filename)
 #   Uploads to: s3://my-bucket/raw/crypto/crypto_prices.csv
-# -----------------------
+# ------------------------------
 
 
 # Load environment variables from .env
